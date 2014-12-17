@@ -84,6 +84,48 @@ class fqueen
         }
     }
 
+    /**
+     * jump to start point of the queen file
+     */
+    public function rewind()
+    {
+        $this->_lock();
+        $info = $this->_get_idx();
+        $info[3] = $info[4] = 0;
+        $this->_set_idx($info);
+        $this->_unlock();
+    }
+
+    /**
+     * jump to end point of the queen file 
+     */
+    public function end()
+    {
+        $this->_lock();
+        $info = $this->_get_idx();
+        $info[3] = $info[1];
+        $info[4] = $info[2];
+        $this->_set_idx($info);
+        $this->_unlock();
+    }
+
+    /**
+     * reset queen file and index file
+     */
+    public function reset()
+    {
+        $this->_lock();
+        ftruncate($this->_file_h, 0);
+        $info = array(1 => 0, 2 => 0, 3 => 0, 4 => 0);
+        $this->_set_idx($info);
+        $this->_unlock();
+
+    }
+
+    /**
+     * get queen info array
+     * [1] filesize, [2] file lines, [3] current position, [4] current line
+     */
     public function info()
     {
         $this->_lock();
@@ -93,12 +135,18 @@ class fqueen
         return $info;
     }
 
+    /**
+     * get the left lines of the queen line
+     */
     public function len()
     {
         $info = $this->info();
-        return $info[1] = $info[3];
+        return $info[2] - $info[4];
     }
 
+    /**
+     * get current items, will return FALSE when eof
+     */
     public function pop()
     {
 
@@ -113,6 +161,28 @@ class fqueen
         $this->_unlock();
 
         return $data;
+    }
+
+    /**
+     * push item to end of queen
+     */
+    public function push($data)
+    {
+        $data_line = substr_count($data, "\n") + 1;
+        $data = "{$data}\r\n";
+        $data_size = strlen($data);
+
+        $this->_lock();
+        $info = $this->_get_idx();
+        fseek($this->_file_h, $info[1]);
+        fwrite($this->_file_h, $data);
+        fseek($this->_file_h, $info[3]);
+        $info[1] += $data_size;
+        $info[2] += $data_line;
+        $this->_set_idx($info);
+        $this->_unlock();
+
+        return $data_line;
     }
 
     /**
